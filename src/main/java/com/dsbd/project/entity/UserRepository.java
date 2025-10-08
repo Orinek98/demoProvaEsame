@@ -1,6 +1,5 @@
 package com.dsbd.project.entity;
 
-import com.sun.xml.bind.v2.model.core.ID;
 import org.springframework.data.repository.CrudRepository;
 
 import java.util.Optional;
