@@ -26,10 +26,13 @@ public class ProjectUserDetailsService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        User user = repository.findByEmail(email);
-        if (user == null)
-            throw new UsernameNotFoundException("Utente non trovato");
 
+        // 1. Estrai l'utente dall'Optional.
+        //    Se l'Optional è vuoto, lancia l'eccezione richiesta da Spring Security.
+        User user = repository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("Utente non trovato per l'email: " + email));
+
+        // 2. Continua con la costruzione dell'oggetto UserDetails standard di Spring Security.
         return new org.springframework.security.core.userdetails.User(
                 user.getEmail(),
                 user.getPassword(),
@@ -39,7 +42,6 @@ public class ProjectUserDetailsService implements UserDetailsService {
                 true,
                 getAuth(user.getRoles())
         );
-
     }
 
     // Costruisce la lista dei privilegi concessi all'utente, sulla base dei ruoli ad esso associati

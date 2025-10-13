@@ -12,6 +12,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.Collections;
 import java.util.Optional;
 
@@ -20,7 +21,7 @@ import java.util.Optional;
 public class ProjectUserService {
 
     @Autowired
-    UserRepository repository;
+    UserRepository userRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -31,59 +32,92 @@ public class ProjectUserService {
     @Value("${jwt.secret}")
     private String jwtSecret;
 
+    public Iterable<User> getAllUsers() {
+        return userRepository.findAll();
+    }
+
+    public Optional<User> getById(Integer id) {
+        return userRepository.findById(id);
+    }
+
+
+
     public User addUser(User user) {
         user.setRoles(Collections.singletonList("USER"));
         user.setPassword(passwordEncoder.encode(user.getPassword()));
-        return repository.save(user);
+        return userRepository.save(user);
     }
 
-    public Iterable<User> getAllUsers() {
-        return repository.findAll();
-    }
-//
-    public Optional<User> getById(Integer id) {
-        return repository.findById(id);
+    public String deleteUser(Integer userId) {
+        userRepository.deleteById(userId);
+        return "User with id: " + userId + " has been deleted!";
     }
 
-    public Optional<User> getByEmail(String email) {
-        return Optional.ofNullable(repository.findByEmail(email));
+    public Optional<User> addCreditByEmail(String email, BigDecimal creditToAdd) {
+
+        Optional<User> userOptional = userRepository.findByEmail(email);
+
+        if (userOptional.isPresent()) {
+            User user = userOptional.get();
+
+            BigDecimal currentCredit = user.getCredit() != null ? user.getCredit() : BigDecimal.ZERO;
+            BigDecimal newCredit = currentCredit.add(creditToAdd);
+
+            user.setCredit(newCredit);
+            User updatedUser = userRepository.save(user);
+
+            return Optional.of(updatedUser);
+        }
+
+        // Se l'utente non viene trovato
+        return Optional.empty();
     }
 
     public AuthResponse login(User user) {
-        User u = repository.findByEmail(user.getEmail());
+        // 1. Usa .orElse(null) per estrarre l'utente (User) dall'Optional
+        User u = userRepository.findByEmail(user.getEmail()).orElse(null);
+
         if (u != null) {
             if (passwordEncoder.matches(user.getPassword(), u.getPassword())) {
-                AuthResponse authResponse = new AuthResponse(jwtUtils.generateJwtToken(u.getEmail()), jwtUtils.generateRefreshToken(u.getEmail()));
+                AuthResponse authResponse = new AuthResponse(
+                        jwtUtils.generateJwtToken(u.getEmail()),
+                        jwtUtils.generateRefreshToken(u.getEmail())
+                );
                 return authResponse;
             }
         }
         return null;
     }
 
-    public AuthResponse reAuth( String refreshToken) throws Exception {
+    public AuthResponse reAuth(String refreshToken) throws Exception {
         AuthResponse authResponse = new AuthResponse();
         try {
             Claims claims = Jwts.parser()
                     .setSigningKey(jwtSecret)
                     .parseClaimsJws(refreshToken)
                     .getBody();
-            User user = repository.findByEmail(claims.getSubject());
+
+            // Estrai l'utente (User) dall'Optional. Se non trovato, 'user' sarà null.
+            User user = userRepository.findByEmail(claims.getSubject()).orElse(null);
+
             if (user != null) {
-                 authResponse.setAccessToken(jwtUtils.generateJwtToken(user.getEmail()));
-                 authResponse.setRefreshToken(jwtUtils.generateRefreshToken(user.getEmail()));
+                authResponse.setAccessToken(jwtUtils.generateJwtToken(user.getEmail()));
+                authResponse.setRefreshToken(jwtUtils.generateRefreshToken(user.getEmail()));
+            } else {
+                // Token valido, ma utente non più presente nel DB
+                throw new Exception("Utente associato al token non trovato.");
             }
         } catch (Exception e) {
-            // Gestisci eventuali errori durante la decodifica del token
             authResponse.setMsg(String.valueOf(e));
-            throw new Exception("Errore durante la decodifica del token", e);
-        } finally {
-            return authResponse;
+            throw new Exception("Errore durante la decodifica o l'uso del token", e);
         }
+
+        return authResponse;
     }
 
 
     public AuthResponse refresh(User user) {
-        User u = repository.findByEmail(user.getEmail());
+        User u = userRepository.findByEmail(user.getEmail()).orElse(null);
         if (u != null) {
             if (passwordEncoder.matches(user.getPassword(), u.getPassword())) {
                 AuthResponse authResponse = new AuthResponse(jwtUtils.generateJwtToken(u.getEmail()), jwtUtils.generateRefreshToken(u.getEmail()));
@@ -93,11 +127,9 @@ public class ProjectUserService {
         return null;
     }
 
-    public String deleteUser(Integer userId) {
-        repository.deleteById(userId);
-        return "User with id: "+userId+" has been deleted!";
+    public User getUserDetailsByEmail(String email) {
+
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Utente loggato non trovato nel DB, email: " + email));
     }
-
-
-
 }
