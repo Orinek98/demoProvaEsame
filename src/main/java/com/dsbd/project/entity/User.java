@@ -5,7 +5,9 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import javax.persistence.*;
 import javax.validation.constraints.NotNull;
 import java.math.BigDecimal;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Entity
 public class User {
@@ -13,9 +15,6 @@ public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Integer id;
-
-//    @NotNull(message = "The name parameter must not be blank!")
-//    private String name;
 
     @NotNull(message = "The email parameter must not be blank!")
     @Column(unique = true)
@@ -35,32 +34,27 @@ public class User {
         return id;
     }
 
-    public User setId(Integer id) {
-        this.id = id;
-        return this;
-    }
-
-
-//    public String getName() {
-//        return name;
-//    }
-//
-//    public User setName(String name) {
-//        this.name = name;
-//        return this;
-//    }
-
     public String getEmail() {
         return email;
     }
 
-    public User setEmail(String email) {
-        this.email = email;
-        return this;
-    }
-
     public String getPassword() {
         return password;
+    }
+
+    public BigDecimal getCredit() {
+        return credit;
+    }
+
+    public List<String> getRoles() {
+        return roles;
+    }
+
+
+
+    public User setId(Integer id) {
+        this.id = id;
+        return this;
     }
 
     public User setPassword(String password) {
@@ -68,8 +62,9 @@ public class User {
         return this;
     }
 
-    public BigDecimal getCredit() {
-        return credit;
+    public User setEmail(String email) {
+        this.email = email;
+        return this;
     }
 
     public User setCredit(BigDecimal credit){
@@ -77,13 +72,25 @@ public class User {
         return this;
     }
 
-    public List<String> getRoles() {
-        return roles;
-    }
-
     public User setRoles(List<String> roles) {
         this.roles = roles;
         return this;
+    }
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "user_purchased_trips", // Nome della tabella di giunzione
+            joinColumns = @JoinColumn(name = "user_id"), // Colonna che punta all'utente
+            inverseJoinColumns = @JoinColumn(name = "trip_id") // Colonna che punta al viaggio
+    )
+    private Set<Trip> purchasedTrips = new HashSet<>();
+
+    // Getter e Setter per purchasedTrips (NECESSARI)
+    public Set<Trip> getPurchasedTrips() {
+        return purchasedTrips;
+    }
+    public void setPurchasedTrips(Set<Trip> purchasedTrips) {
+        this.purchasedTrips = purchasedTrips;
     }
 
 }

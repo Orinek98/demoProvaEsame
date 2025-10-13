@@ -32,18 +32,24 @@ public class ProjectConfig extends WebSecurityConfigurerAdapter {
     @Override
     protected void configure(HttpSecurity http) throws Exception {
         http
-                //.httpBasic()
-                //.and()
-                // STATELESS session
                 .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS).and()
                 .authorizeRequests()
-                .antMatchers("/v2/**", "/swagger-ui/**").permitAll()
-                .antMatchers("/user/{id}").permitAll() // Consenti a tutti l'accesso all'endpoint /user/register
-                .antMatchers("/user/register").permitAll() // Consenti a tutti l'accesso all'endpoint /user/register
-                .antMatchers("/user/login/**").permitAll() // Consenti a tutti l'accesso all'endpoint /user/login
-                .antMatchers("/user/re-auth/**").permitAll() // Consenti a tutti l'accesso all'endpoint /user/reAuth
-                .antMatchers("/user/all").hasAuthority("ADMIN") // Consenti soltanto agli utenti con ruolo ADMIN l'accesso a /user/all
-                .antMatchers(HttpMethod.DELETE, "/user/{id}").hasAuthority("ADMIN") // Consenti soltanto agli utenti con ruolo ADMIN la rimozione degli utenti
+
+                // PUBLIC
+                .antMatchers("/v2/**", "/swagger-ui/**").permitAll()// Consenti a tutti l'accesso all'endpoint /user/register
+                .antMatchers(HttpMethod.GET,"/trips").permitAll() // Consenti a tutti l'accesso all'endpoint /user/register
+                .antMatchers("/trips/register").permitAll()
+                .antMatchers("/register").permitAll()
+                .antMatchers("/login/**").permitAll()
+                .antMatchers("/re-auth/**").permitAll()
+
+                // AUTH
+                .antMatchers("/me").authenticated()
+                .antMatchers("/me/**").authenticated()
+                .antMatchers(HttpMethod.POST, "/trips/{tripId}/buy").authenticated()
+
+                // ADMIN
+                .antMatchers(HttpMethod.POST,"/trips").hasAuthority("ADMIN")
                 .anyRequest().authenticated() // Tutte le altre richieste devono essere autenticate
                 .and()
                 .csrf().disable(); // Nel caso di REST API stateless, la protezione Cross-Site-Request-Forgery non serve
